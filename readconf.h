@@ -126,7 +126,7 @@ typedef struct {
 	char   **setenv;
 
 	char	*control_path;
-	int	control_master;
+	int	control_primary;
 	int     control_persist; /* ControlPersist flag */
 	int     control_persist_timeout; /* ControlPersist timeout (seconds) */
 
@@ -174,11 +174,11 @@ typedef struct {
 #define SSH_CANONICALISE_YES	1
 #define SSH_CANONICALISE_ALWAYS	2
 
-#define SSHCTL_MASTER_NO	0
-#define SSHCTL_MASTER_YES	1
-#define SSHCTL_MASTER_AUTO	2
-#define SSHCTL_MASTER_ASK	3
-#define SSHCTL_MASTER_AUTO_ASK	4
+#define SSHCTL_PRIMARY_NO	0
+#define SSHCTL_PRIMARY_YES	1
+#define SSHCTL_PRIMARY_AUTO	2
+#define SSHCTL_PRIMARY_ASK	3
+#define SSHCTL_PRIMARY_AUTO_ASK	4
 
 #define REQUEST_TTY_AUTO	0
 #define REQUEST_TTY_NO		1

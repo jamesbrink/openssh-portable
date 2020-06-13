@@ -146,7 +146,7 @@ struct permission_set {
 	int all_permitted;
 };
 
-/* Master structure for channels state */
+/* Primary structure for channels state */
 struct ssh_channels {
 	/*
 	 * Pointer to an array containing all allocated channels.  The array

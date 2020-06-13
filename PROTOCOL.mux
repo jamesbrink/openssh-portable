@@ -1,8 +1,8 @@
 This document describes the multiplexing protocol used by ssh(1)'s
-ControlMaster connection-sharing.
+ControlPrimary connection-sharing.
 
 Multiplexing starts with a ssh(1) configured to act as a multiplexing
-master. This will cause ssh(1) to listen on a Unix domain socket for
+primary. This will cause ssh(1) to listen on a Unix domain socket for
 requests from clients. Clients communicate over this socket using a
 simple packetised protocol, where each message is proceeded with
 a length and message type in SSH uint32 wire format:
@@ -17,7 +17,7 @@ facilitate matching of responses to requests.
 
 Many muliplexing (mux) client requests yield immediate responses from
 the mux process; requesting a forwarding, performing an alive check or
-requesting the master terminate itself fall in to this category.
+requesting the primary terminate itself fall in to this category.
 
 The most common use of multiplexing however is to maintain multiple
 concurrent sessions. These are supported via two separate modes:
@@ -45,7 +45,7 @@ host if necessary.
 1. Connection setup
 
 When a multiplexing connection is made to a ssh(1) operating as a
-ControlMaster from a client ssh(1), the first action of each is send
+ControlPrimary from a client ssh(1), the first action of each is send
 a hello messages to its peer:
 
 	uint32	MUX_MSG_HELLO
@@ -55,7 +55,7 @@ a hello messages to its peer:
 	...
 
 The current version of the mux protocol is 4. A client should refuse
-to connect to a master that speaks an unsupported protocol version.
+to connect to a primary that speaks an unsupported protocol version.
 
 Following the version identifier are zero or more extensions represented
 as a name/value pair. No extensions are currently defined.
@@ -110,7 +110,7 @@ non-multiplexed ssh(1) connection. Two additional cases that the
 client must cope with are it receiving a signal itself and the
 server disconnecting without sending an exit message.
 
-A master may also send a MUX_S_TTY_ALLOC_FAIL before MUX_S_EXIT_MESSAGE
+A primary may also send a MUX_S_TTY_ALLOC_FAIL before MUX_S_EXIT_MESSAGE
 if remote TTY allocation was unsuccessful. The client may use this to
 return its local tty to "cooked" mode.
 
@@ -119,7 +119,7 @@ return its local tty to "cooked" mode.
 
 3. Requesting passenger-mode stdio forwarding
 
-A client may request the master to establish a stdio forwarding:
+A client may request the primary to establish a stdio forwarding:
 
 	uint32	MUX_C_NEW_STDIO_FWD
 	uint32	request id
@@ -148,9 +148,9 @@ The server replies with:
 	uint32	client request id
 	uint32	server pid
 
-5. Remotely terminating a master
+5. Remotely terminating a primary
 
-A client may request that a master terminate immediately:
+A client may request that a primary terminate immediately:
 
 	uint32	MUX_C_TERMINATE
 	uint32	request id
@@ -159,7 +159,7 @@ The server will reply with one of MUX_S_OK or MUX_S_PERMISSION_DENIED.
 
 6. Requesting establishment of port forwards
 
-A client may request the master to establish a port forward:
+A client may request the primary to establish a port forward:
 
 	uint32	MUX_C_OPEN_FWD
 	uint32	request id
@@ -190,7 +190,7 @@ For dynamically allocated listen port the server replies with
 
 Note: currently unimplemented (server will always reply with MUX_S_FAILURE).
 
-A client may request the master to close a port forward:
+A client may request the primary to close a port forward:
 
 	uint32	MUX_C_CLOSE_FWD
 	uint32	request id
@@ -205,7 +205,7 @@ MUX_S_FAILURE.
 
 8. Requesting shutdown of mux listener
 
-A client may request the master to stop accepting new multiplexing requests
+A client may request the primary to stop accepting new multiplexing requests
 and remove its listener socket.
 
 	uint32	MUX_C_STOP_LISTENING
@@ -222,7 +222,7 @@ mode:
 	uint32	MUX_C_PROXY
 	uint32	request id
 
-When a mux master receives this message, it will reply with a
+When a mux primary receives this message, it will reply with a
 confirmation:
 
 	uint32	MUX_S_PROXY
@@ -236,7 +236,7 @@ be formatted as unencrypted, unpadded, SSH transport messages:
 	byte	packet type
 	byte[packet length - 2] ...
 
-The mux master will accept most connection messages and global requests,
+The mux primary will accept most connection messages and global requests,
 and will translate channel identifiers to ensure that the proxy client has
 globally unique channel numbers (i.e. a proxy client need not worry about
 collisions with other clients).
@@ -291,7 +291,7 @@ XXX send signals via mux
 XXX ^Z support in passengers
 XXX extensions for multi-agent
 XXX extensions for multi-X11
-XXX session inspection via master
+XXX session inspection via primary
 XXX signals via mux request
 XXX list active connections via mux
 

@@ -161,7 +161,7 @@ typedef enum {
 	oEnableSSHKeysign, oRekeyLimit, oVerifyHostKeyDNS, oConnectTimeout,
 	oAddressFamily, oGssAuthentication, oGssDelegateCreds,
 	oServerAliveInterval, oServerAliveCountMax, oIdentitiesOnly,
-	oSendEnv, oSetEnv, oControlPath, oControlMaster, oControlPersist,
+	oSendEnv, oSetEnv, oControlPath, oControlPrimary, oControlPersist,
 	oHashKnownHosts,
 	oTunnel, oTunnelDevice,
 	oLocalCommand, oPermitLocalCommand, oRemoteCommand,
@@ -281,7 +281,7 @@ static struct {
 	{ "sendenv", oSendEnv },
 	{ "setenv", oSetEnv },
 	{ "controlpath", oControlPath },
-	{ "controlmaster", oControlMaster },
+	{ "controlprimary", oControlPrimary },
 	{ "controlpersist", oControlPersist },
 	{ "hashknownhosts", oHashKnownHosts },
 	{ "include", oInclude },
@@ -830,14 +830,14 @@ static const struct multistate multistate_addressfamily[] = {
 	{ "any",			AF_UNSPEC },
 	{ NULL, -1 }
 };
-static const struct multistate multistate_controlmaster[] = {
-	{ "true",			SSHCTL_MASTER_YES },
-	{ "yes",			SSHCTL_MASTER_YES },
-	{ "false",			SSHCTL_MASTER_NO },
-	{ "no",				SSHCTL_MASTER_NO },
-	{ "auto",			SSHCTL_MASTER_AUTO },
-	{ "ask",			SSHCTL_MASTER_ASK },
-	{ "autoask",			SSHCTL_MASTER_AUTO_ASK },
+static const struct multistate multistate_controlprimary[] = {
+	{ "true",			SSHCTL_PRIMARY_YES },
+	{ "yes",			SSHCTL_PRIMARY_YES },
+	{ "false",			SSHCTL_PRIMARY_NO },
+	{ "no",				SSHCTL_PRIMARY_NO },
+	{ "auto",			SSHCTL_PRIMARY_AUTO },
+	{ "ask",			SSHCTL_PRIMARY_ASK },
+	{ "autoask",			SSHCTL_PRIMARY_AUTO_ASK },
 	{ NULL, -1 }
 };
 static const struct multistate multistate_tunnel[] = {
@@ -1532,9 +1532,9 @@ parse_keytypes:
 		charptr = &options->control_path;
 		goto parse_string;
 
-	case oControlMaster:
-		intptr = &options->control_master;
-		multistate_ptr = multistate_controlmaster;
+	case oControlPrimary:
+		intptr = &options->control_primary;
+		multistate_ptr = multistate_controlprimary;
 		goto parse_multistate;
 
 	case oControlPersist:
@@ -2002,7 +2002,7 @@ initialize_options(Options * options)
 	options->setenv = NULL;
 	options->num_setenv = 0;
 	options->control_path = NULL;
-	options->control_master = -1;
+	options->control_primary = -1;
 	options->control_persist = -1;
 	options->control_persist_timeout = 0;
 	options->hash_known_hosts = -1;
@@ -2172,8 +2172,8 @@ fill_default_options(Options * options)
 		options->server_alive_interval = 0;
 	if (options->server_alive_count_max == -1)
 		options->server_alive_count_max = 3;
-	if (options->control_master == -1)
-		options->control_master = 0;
+	if (options->control_primary == -1)
+		options->control_primary = 0;
 	if (options->control_persist == -1) {
 		options->control_persist = 0;
 		options->control_persist_timeout = 0;
@@ -2221,11 +2221,11 @@ fill_default_options(Options * options)
 	all_key = sshkey_alg_list(0, 0, 1, ',');
 	all_sig = sshkey_alg_list(0, 1, 1, ',');
 	/* remove unsupported algos from default lists */
-	def_cipher = match_filter_whitelist(KEX_CLIENT_ENCRYPT, all_cipher);
-	def_mac = match_filter_whitelist(KEX_CLIENT_MAC, all_mac);
-	def_kex = match_filter_whitelist(KEX_CLIENT_KEX, all_kex);
-	def_key = match_filter_whitelist(KEX_DEFAULT_PK_ALG, all_key);
-	def_sig = match_filter_whitelist(SSH_ALLOWED_CA_SIGALGS, all_sig);
+	def_cipher = match_filter_allowlist(KEX_CLIENT_ENCRYPT, all_cipher);
+	def_mac = match_filter_allowlist(KEX_CLIENT_MAC, all_mac);
+	def_kex = match_filter_allowlist(KEX_CLIENT_KEX, all_kex);
+	def_key = match_filter_allowlist(KEX_DEFAULT_PK_ALG, all_key);
+	def_sig = match_filter_allowlist(SSH_ALLOWED_CA_SIGALGS, all_sig);
 #define ASSEMBLE(what, defaults, all) \
 	do { \
 		if ((r = kex_assemble_names(&options->what, \
@@ -2588,8 +2588,8 @@ fmt_intarg(OpCodes code, int val)
 		return fmt_multistate_int(val, multistate_yesnoask);
 	case oStrictHostKeyChecking:
 		return fmt_multistate_int(val, multistate_strict_hostkey);
-	case oControlMaster:
-		return fmt_multistate_int(val, multistate_controlmaster);
+	case oControlPrimary:
+		return fmt_multistate_int(val, multistate_controlprimary);
 	case oTunnel:
 		return fmt_multistate_int(val, multistate_tunnel);
 	case oRequestTTY:
@@ -2733,7 +2733,7 @@ dump_client_config(Options *o, const char *host)
 	dump_cfg_fmtint(oChallengeResponseAuthentication, o->challenge_response_authentication);
 	dump_cfg_fmtint(oCheckHostIP, o->check_host_ip);
 	dump_cfg_fmtint(oCompression, o->compression);
-	dump_cfg_fmtint(oControlMaster, o->control_master);
+	dump_cfg_fmtint(oControlPrimary, o->control_primary);
 	dump_cfg_fmtint(oEnableSSHKeysign, o->enable_ssh_keysign);
 	dump_cfg_fmtint(oClearAllForwardings, o->clear_forwardings);
 	dump_cfg_fmtint(oExitOnForwardFailure, o->exit_on_forward_failure);

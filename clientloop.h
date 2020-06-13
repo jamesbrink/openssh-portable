@@ -69,8 +69,8 @@ void client_expect_confirm(struct ssh *, int, const char *,
 
 /* Multiplexing control protocol flags */
 #define SSHMUX_COMMAND_OPEN		1	/* Open new connection */
-#define SSHMUX_COMMAND_ALIVE_CHECK	2	/* Check master is alive */
-#define SSHMUX_COMMAND_TERMINATE	3	/* Ask master to exit */
+#define SSHMUX_COMMAND_ALIVE_CHECK	2	/* Check primary is alive */
+#define SSHMUX_COMMAND_TERMINATE	3	/* Ask primary to exit */
 #define SSHMUX_COMMAND_STDIO_FWD	4	/* Open stdio fwd (ssh -W) */
 #define SSHMUX_COMMAND_FORWARD		5	/* Forward only, no command */
 #define SSHMUX_COMMAND_STOP		6	/* Disable mux but not conn */

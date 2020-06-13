@@ -105,7 +105,7 @@ tests(void)
 
 #define CHECK_FILTER(string,filter,expected) \
 	do { \
-		char *result = match_filter_blacklist((string), (filter)); \
+		char *result = match_filter_denylist((string), (filter)); \
 		ASSERT_STRING_EQ(result, expected); \
 		free(result); \
 	} while (0)

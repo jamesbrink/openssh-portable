@@ -137,11 +137,11 @@ int stdin_null_flag = 0;
 
 /*
  * Flag indicating that the current process should be backgrounded and
- * a new slave launched in the foreground for ControlPersist.
+ * a new replica launched in the foreground for ControlPersist.
  */
 int need_controlpersist_detach = 0;
 
-/* Copies of flags for ControlPersist foreground slave */
+/* Copies of flags for ControlPersist foreground replica */
 int ostdin_null_flag, ono_shell_flag, otty_flag, orequest_tty;
 
 /*
@@ -783,8 +783,6 @@ main(int ac, char **av)
 			else
 				fatal("Invalid multiplex command.");
 			break;
-		case 'P':	/* deprecated */
-			break;
 		case 'Q':
 			cp = NULL;
 			if (strcmp(optarg, "cipher") == 0 ||
@@ -970,11 +968,11 @@ main(int ac, char **av)
 				exit(255);
 			}
 			break;
-		case 'M':
-			if (options.control_master == SSHCTL_MASTER_YES)
-				options.control_master = SSHCTL_MASTER_ASK;
+		case 'P':
+			if (options.control_primary == SSHCTL_PRIMARY_YES)
+				options.control_primary = SSHCTL_PRIMARY_ASK;
 			else
-				options.control_master = SSHCTL_MASTER_YES;
+				options.control_primary = SSHCTL_PRIMARY_YES;
 			break;
 		case 'p':
 			if (options.port == -1) {
@@ -1694,30 +1692,30 @@ control_persist_detach(void)
 	pid_t pid;
 	int devnull, keep_stderr;
 
-	debug("%s: backgrounding master process", __func__);
+	debug("%s: backgrounding primary process", __func__);
 
 	/*
-	 * master (current process) into the background, and make the
-	 * foreground process a client of the backgrounded master.
+	 * primary (current process) into the background, and make the
+	 * foreground process a client of the backgrounded primary.
 	 */
 	switch ((pid = fork())) {
 	case -1:
 		fatal("%s: fork: %s", __func__, strerror(errno));
 	case 0:
-		/* Child: master process continues mainloop */
+		/* Child: primary process continues mainloop */
 		break;
 	default:
-		/* Parent: set up mux slave to connect to backgrounded master */
+		/* Parent: set up mux replica to connect to backgrounded primary */
 		debug2("%s: background process is %ld", __func__, (long)pid);
 		stdin_null_flag = ostdin_null_flag;
 		options.request_tty = orequest_tty;
 		tty_flag = otty_flag;
 		close(muxserver_sock);
 		muxserver_sock = -1;
-		options.control_master = SSHCTL_MASTER_NO;
+		options.control_primary = SSHCTL_PRIMARY_NO;
 		muxclient(options.control_path);
 		/* muxclient() doesn't return on success. */
-		fatal("Failed to connect to new control master");
+		fatal("Failed to connect to new control primary");
 	}
 	if ((devnull = open(_PATH_DEVNULL, O_RDWR)) == -1) {
 		error("%s: open(\"/dev/null\"): %s", __func__,
@@ -2086,9 +2084,9 @@ ssh_session2(struct ssh *ssh, struct passwd *pw)
 	/*
 	 * If we are in control persist mode and have a working mux listen
 	 * socket, then prepare to background ourselves and have a foreground
-	 * client attach as a control slave.
+	 * client attach as a control replica.
 	 * NB. we must save copies of the flags that we override for
-	 * the backgrounding, since we defer attachment of the slave until
+	 * the backgrounding, since we defer attachment of the replica until
 	 * after the connection is fully established (in particular,
 	 * async rfwd replies have been received for ExitOnForwardFailure).
 	 */
@@ -2115,12 +2113,12 @@ ssh_session2(struct ssh *ssh, struct passwd *pw)
 		id = ssh_session2_open(ssh);
 	else {
 		ssh_packet_set_interactive(ssh,
-		    options.control_master == SSHCTL_MASTER_NO,
+		    options.control_primary == SSHCTL_PRIMARY_NO,
 		    options.ip_qos_interactive, options.ip_qos_bulk);
 	}
 
 	/* If we don't expect to open a new session, then disallow it */
-	if (options.control_master == SSHCTL_MASTER_NO &&
+	if (options.control_primary == SSHCTL_PRIMARY_NO &&
 	    (datafellows & SSH_NEW_OPENSSH)) {
 		debug("Requesting no-more-sessions@openssh.com");
 		if ((r = sshpkt_start(ssh, SSH2_MSG_GLOBAL_REQUEST)) != 0 ||

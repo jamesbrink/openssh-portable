@@ -247,7 +247,7 @@ kex_assemble_names(char **listp, const char *def, const char *all)
 		list = tmp;
 	} else if (*list == '-') {
 		/* Remove names from default list */
-		if ((*listp = match_filter_blacklist(def, list + 1)) == NULL) {
+		if ((*listp = match_filter_denylist(def, list + 1)) == NULL) {
 			r = SSH_ERR_ALLOC_FAIL;
 			goto fail;
 		}
@@ -284,7 +284,7 @@ kex_assemble_names(char **listp, const char *def, const char *all)
 			goto fail;
 		}
 		free(matching);
-		if ((matching = match_filter_whitelist(all, cp)) == NULL) {
+		if ((matching = match_filter_allowlist(all, cp)) == NULL) {
 			r = SSH_ERR_ALLOC_FAIL;
 			goto fail;
 		}

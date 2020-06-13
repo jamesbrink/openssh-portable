@@ -39,7 +39,7 @@ struct Session {
 
 	/* tty */
 	char	*term;
-	int	ptyfd, ttyfd, ptymaster;
+	int	ptyfd, ttyfd, ptyprimary;
 	u_int	row, col, xpixel, ypixel;
 	char	tty[TTYSZ];
 

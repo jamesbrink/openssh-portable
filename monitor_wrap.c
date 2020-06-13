@@ -626,10 +626,10 @@ mm_session_pty_cleanup2(Session *s)
 	mm_request_send(pmonitor->m_recvfd, MONITOR_REQ_PTYCLEANUP, m);
 	sshbuf_free(m);
 
-	/* closed dup'ed master */
-	if (s->ptymaster != -1 && close(s->ptymaster) == -1)
-		error("close(s->ptymaster/%d): %s",
-		    s->ptymaster, strerror(errno));
+	/* closed dup'ed primary */
+	if (s->ptyprimary != -1 && close(s->ptyprimary) == -1)
+		error("close(s->ptyprimary/%d): %s",
+		    s->ptyprimary, strerror(errno));
 
 	/* unlink pty from session */
 	s->ttyfd = -1;

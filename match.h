@@ -21,8 +21,8 @@ int	 match_hostname(const char *, const char *);
 int	 match_host_and_ip(const char *, const char *, const char *);
 int	 match_user(const char *, const char *, const char *, const char *);
 char	*match_list(const char *, const char *, u_int *);
-char	*match_filter_blacklist(const char *, const char *);
-char	*match_filter_whitelist(const char *, const char *);
+char	*match_filter_denylist(const char *, const char *);
+char	*match_filter_allowlist(const char *, const char *);
 
 /* addrmatch.c */
 int	 addr_match_list(const char *, const char *);

@@ -497,7 +497,7 @@ Specifies the timeout (in seconds) used when connecting to the
 SSH server, instead of using the default system TCP timeout.
 This timeout is applied both to establishing the connection and to performing
 the initial SSH protocol handshake and key exchange.
-.It Cm ControlMaster
+.It Cm ControlPrimary
 Enables the sharing of multiple sessions over a single network connection.
 When set to
 .Cm yes ,
@@ -508,11 +508,11 @@ argument.
 Additional sessions can connect to this socket using the same
 .Cm ControlPath
 with
-.Cm ControlMaster
+.Cm ControlPrimary
 set to
 .Cm no
 (the default).
-These sessions will try to reuse the master instance's network connection
+These sessions will try to reuse the primary instance's network connection
 rather than initiating new ones, but will fall back to connecting normally
 if the control socket does not exist, or is not listening.
 .Pp
@@ -526,16 +526,16 @@ If the
 .Cm ControlPath
 cannot be opened,
 .Xr ssh 1
-will continue without connecting to a master instance.
+will continue without connecting to a primary instance.
 .Pp
 X11 and
 .Xr ssh-agent 1
 forwarding is supported over these multiplexed connections, however the
-display and agent forwarded will be the one belonging to the master
+display and agent forwarded will be the one belonging to the primary
 connection i.e. it is not possible to forward multiple displays or agents.
 .Pp
 Two additional options allow for opportunistic multiplexing: try to use a
-master connection but fall back to creating a new one if one does not already
+primary connection but fall back to creating a new one if one does not already
 exist.
 These options are:
 .Cm auto
@@ -547,7 +547,7 @@ option.
 .It Cm ControlPath
 Specify the path to the control socket used for connection sharing as described
 in the
-.Cm ControlMaster
+.Cm ControlPrimary
 section above or the string
 .Cm none
 to disable connection sharing.
@@ -567,24 +567,24 @@ that is not writable by other users.
 This ensures that shared connections are uniquely identified.
 .It Cm ControlPersist
 When used in conjunction with
-.Cm ControlMaster ,
-specifies that the master connection should remain open
+.Cm ControlPrimary ,
+specifies that the primary connection should remain open
 in the background (waiting for future client connections)
 after the initial client connection has been closed.
 If set to
 .Cm no
 (the default),
-then the master connection will not be placed into the background,
+then the primary connection will not be placed into the background,
 and will close as soon as the initial client connection is closed.
 If set to
 .Cm yes
 or 0,
-then the master connection will remain in the background indefinitely
+then the primary connection will remain in the background indefinitely
 (until killed or closed via a mechanism such as the
 .Qq ssh -O exit ) .
 If set to a time in seconds, or a time in any of the formats documented in
 .Xr sshd_config 5 ,
-then the backgrounded master connection will automatically terminate
+then the backgrounded primary connection will automatically terminate
 after it has remained idle (with no client connections) for the
 specified time.
 .It Cm DynamicForward

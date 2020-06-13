@@ -72,7 +72,7 @@
 #endif
 
 int
-openpty(int *amaster, int *aslave, char *name, struct termios *termp,
+openpty(int *aprimary, int *areplica, char *name, struct termios *termp,
    struct winsize *winp)
 {
 #if defined(HAVE__GETPTY)
@@ -80,14 +80,14 @@ openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 	 * _getpty(3) exists in SGI Irix 4.x, 5.x & 6.x -- it generates more
 	 * pty's automagically when needed
 	 */
-	char *slave;
+	char *replica;
 
-	if ((slave = _getpty(amaster, O_RDWR, 0622, 0)) == NULL)
+	if ((replica = _getpty(aprimary, O_RDWR, 0622, 0)) == NULL)
 		return (-1);
 
-	/* Open the slave side. */
-	if ((*aslave = open(slave, O_RDWR | O_NOCTTY)) == -1) {
-		close(*amaster);
+	/* Open the replica side. */
+	if ((*areplica = open(replica, O_RDWR | O_NOCTTY)) == -1) {
+		close(*aprimary);
 		return (-1);
 	}
 	return (0);
@@ -115,11 +115,11 @@ openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 
 	if ((pts = ptsname(ptm)) == NULL)
 		return (-1);
-	*amaster = ptm;
+	*aprimary = ptm;
 
-	/* Open the slave side. */
-	if ((*aslave = open(pts, O_RDWR | O_NOCTTY)) == -1) {
-		close(*amaster);
+	/* Open the replica side. */
+	if ((*areplica = open(pts, O_RDWR | O_NOCTTY)) == -1) {
+		close(*aprimary);
 		return (-1);
 	}
 
@@ -128,7 +128,7 @@ openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 	 * If the streams modules have already been pushed then there
 	 * is no more work to do here.
 	 */
-	if (ioctl(*aslave, I_FIND, "ptem") != 0)
+	if (ioctl(*areplica, I_FIND, "ptem") != 0)
 		return 0;
 # endif
 
@@ -136,10 +136,10 @@ openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 	 * Try to push the appropriate streams modules, as described
 	 * in Solaris pts(7).
 	 */
-	ioctl(*aslave, I_PUSH, "ptem");
-	ioctl(*aslave, I_PUSH, "ldterm");
+	ioctl(*areplica, I_PUSH, "ptem");
+	ioctl(*areplica, I_PUSH, "ldterm");
 # ifndef __hpux
-	ioctl(*aslave, I_PUSH, "ttcompat");
+	ioctl(*areplica, I_PUSH, "ttcompat");
 # endif /* __hpux */
 
 	return (0);
@@ -148,12 +148,12 @@ openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 	/* AIX-style pty code. */
 	const char *ttname;
 
-	if ((*amaster = open("/dev/ptc", O_RDWR | O_NOCTTY)) == -1)
+	if ((*aprimary = open("/dev/ptc", O_RDWR | O_NOCTTY)) == -1)
 		return (-1);
-	if ((ttname = ttyname(*amaster)) == NULL)
+	if ((ttname = ttyname(*aprimary)) == NULL)
 		return (-1);
-	if ((*aslave = open(ttname, O_RDWR | O_NOCTTY)) == -1) {
-		close(*amaster);
+	if ((*areplica = open(ttname, O_RDWR | O_NOCTTY)) == -1) {
+		close(*aprimary);
 		return (-1);
 	}
 	return (0);
@@ -175,25 +175,25 @@ openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 		snprintf(ttbuf, sizeof(ttbuf), "/dev/tty%c%c",
 		    ptymajors[i / num_minors], ptyminors[i % num_minors]);
 
-		if ((*amaster = open(ptbuf, O_RDWR | O_NOCTTY)) == -1) {
+		if ((*aprimary = open(ptbuf, O_RDWR | O_NOCTTY)) == -1) {
 			/* Try SCO style naming */
 			snprintf(ptbuf, sizeof(ptbuf), "/dev/ptyp%d", i);
 			snprintf(ttbuf, sizeof(ttbuf), "/dev/ttyp%d", i);
-			if ((*amaster = open(ptbuf, O_RDWR | O_NOCTTY)) == -1)
+			if ((*aprimary = open(ptbuf, O_RDWR | O_NOCTTY)) == -1)
 				continue;
 		}
 
-		/* Open the slave side. */
-		if ((*aslave = open(ttbuf, O_RDWR | O_NOCTTY)) == -1) {
-			close(*amaster);
+		/* Open the replica side. */
+		if ((*areplica = open(ttbuf, O_RDWR | O_NOCTTY)) == -1) {
+			close(*aprimary);
 			return (-1);
 		}
 		/* set tty modes to a sane state for broken clients */
-		if (tcgetattr(*amaster, &tio) != -1) {
+		if (tcgetattr(*aprimary, &tio) != -1) {
 			tio.c_lflag |= (ECHO | ISIG | ICANON);
 			tio.c_oflag |= (OPOST | ONLCR);
 			tio.c_iflag |= ICRNL;
-			tcsetattr(*amaster, TCSANOW, &tio);
+			tcsetattr(*aprimary, TCSANOW, &tio);
 		}
 
 		return (0);

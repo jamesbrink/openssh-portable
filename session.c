@@ -562,7 +562,7 @@ do_exec_no_pty(struct ssh *ssh, Session *s, const char *command)
 int
 do_exec_pty(struct ssh *ssh, Session *s, const char *command)
 {
-	int fdout, ptyfd, ttyfd, ptymaster;
+	int fdout, ptyfd, ttyfd, ptyprimary;
 	pid_t pid;
 
 	if (s == NULL)
@@ -571,7 +571,7 @@ do_exec_pty(struct ssh *ssh, Session *s, const char *command)
 	ttyfd = s->ttyfd;
 
 	/*
-	 * Create another descriptor of the pty master side for use as the
+	 * Create another descriptor of the pty primary side for use as the
 	 * standard input.  We could use the original descriptor, but this
 	 * simplifies code in server_loop.  The descriptor is bidirectional.
 	 * Do this before forking (and cleanup in the child) so as to
@@ -583,8 +583,8 @@ do_exec_pty(struct ssh *ssh, Session *s, const char *command)
 		close(ptyfd);
 		return -1;
 	}
-	/* we keep a reference to the pty master */
-	if ((ptymaster = dup(ptyfd)) == -1) {
+	/* we keep a reference to the pty primary */
+	if ((ptyprimary = dup(ptyfd)) == -1) {
 		error("%s: dup #2: %s", __func__, strerror(errno));
 		close(ttyfd);
 		close(ptyfd);
@@ -597,7 +597,7 @@ do_exec_pty(struct ssh *ssh, Session *s, const char *command)
 	case -1:
 		error("%s: fork: %.100s", __func__, strerror(errno));
 		close(fdout);
-		close(ptymaster);
+		close(ptyprimary);
 		close(ttyfd);
 		close(ptyfd);
 		return -1;
@@ -605,9 +605,9 @@ do_exec_pty(struct ssh *ssh, Session *s, const char *command)
 		is_child = 1;
 
 		close(fdout);
-		close(ptymaster);
+		close(ptyprimary);
 
-		/* Close the master side of the pseudo tty. */
+		/* Close the primary side of the pseudo tty. */
 		close(ptyfd);
 
 		/* Make the pseudo tty our controlling tty. */
@@ -644,11 +644,11 @@ do_exec_pty(struct ssh *ssh, Session *s, const char *command)
 
 	s->pid = pid;
 
-	/* Parent.  Close the slave side of the pseudo tty. */
+	/* Parent.  Close the replica side of the pseudo tty. */
 	close(ttyfd);
 
 	/* Enter interactive session. */
-	s->ptymaster = ptymaster;
+	s->ptyprimary = ptyprimary;
 	ssh_packet_set_interactive(ssh, 1,
 	    options.ip_qos_interactive, options.ip_qos_bulk);
 	session_set_fds(ssh, s, ptyfd, fdout, -1, 1, 1);
@@ -843,12 +843,12 @@ check_quietlogin(Session *s, const char *command)
  * into the environment.  If the file does not exist, this does nothing.
  * Otherwise, it must consist of empty lines, comments (line starts with '#')
  * and assignments of the form name=value.  No other forms are allowed.
- * If whitelist is not NULL, then it is interpreted as a pattern list and
+ * If allowlist is not NULL, then it is interpreted as a pattern list and
  * only variable names that match it will be accepted.
  */
 static void
 read_environment_file(char ***env, u_int *envsize,
-	const char *filename, const char *whitelist)
+	const char *filename, const char *allowlist)
 {
 	FILE *f;
 	char *line = NULL, *cp, *value;
@@ -881,8 +881,8 @@ read_environment_file(char ***env, u_int *envsize,
 		 */
 		*value = '\0';
 		value++;
-		if (whitelist != NULL &&
-		    match_pattern_list(cp, whitelist, 0) != 1)
+		if (allowlist != NULL &&
+		    match_pattern_list(cp, allowlist, 0) != 1)
 			continue;
 		child_set_env(env, envsize, cp, value);
 	}
@@ -924,7 +924,7 @@ read_etc_default_login(char ***env, u_int *envsize, uid_t uid)
 	 * interested in.
 	 */
 	read_environment_file(&tmpenv, &tmpenvsize, "/etc/default/login",
-	    options.permit_user_env_whitelist);
+	    options.permit_user_env_allowlist);
 
 	if (tmpenv == NULL)
 		return;
@@ -948,8 +948,8 @@ read_etc_default_login(char ***env, u_int *envsize, uid_t uid)
 
 #if defined(USE_PAM) || defined(HAVE_CYGWIN)
 static void
-copy_environment_blacklist(char **source, char ***env, u_int *envsize,
-    const char *blacklist)
+copy_environment_denylist(char **source, char ***env, u_int *envsize,
+    const char *denylist)
 {
 	char *var_name, *var_val;
 	int i;
@@ -965,8 +965,8 @@ copy_environment_blacklist(char **source, char ***env, u_int *envsize,
 		}
 		*var_val++ = '\0';
 
-		if (blacklist == NULL ||
-		    match_pattern_list(var_name, blacklist, 0) != 1) {
+		if (denylist == NULL ||
+		    match_pattern_list(var_name, denylist, 0) != 1) {
 			debug3("Copy environment: %s=%s", var_name, var_val);
 			child_set_env(env, envsize, var_name, var_val);
 		}
@@ -980,7 +980,7 @@ copy_environment_blacklist(char **source, char ***env, u_int *envsize,
 static void
 copy_environment(char **source, char ***env, u_int *envsize)
 {
-	copy_environment_blacklist(source, env, envsize, NULL);
+	copy_environment_denylist(source, env, envsize, NULL);
 }
 #endif
 
@@ -1091,7 +1091,7 @@ do_setup_env(struct ssh *ssh, Session *s, const char *shell)
 		if ((cp = getenv("AUTHSTATE")) != NULL)
 			child_set_env(&env, &envsize, "AUTHSTATE", cp);
 		read_environment_file(&env, &envsize, "/etc/environment",
-		    options.permit_user_env_whitelist);
+		    options.permit_user_env_allowlist);
 	}
 #endif
 #ifdef KRB5
@@ -1111,10 +1111,10 @@ do_setup_env(struct ssh *ssh, Session *s, const char *shell)
 			cp = strchr(ocp, '=');
 			if (*cp == '=') {
 				*cp = '\0';
-				/* Apply PermitUserEnvironment whitelist */
-				if (options.permit_user_env_whitelist == NULL ||
+				/* Apply PermitUserEnvironment allowlist */
+				if (options.permit_user_env_allowlist == NULL ||
 				    match_pattern_list(ocp,
-				    options.permit_user_env_whitelist, 0) == 1)
+				    options.permit_user_env_allowlist, 0) == 1)
 					child_set_env(&env, &envsize,
 					    ocp, cp + 1);
 			}
@@ -1127,7 +1127,7 @@ do_setup_env(struct ssh *ssh, Session *s, const char *shell)
 		snprintf(buf, sizeof buf, "%.200s/.ssh/environment",
 		    pw->pw_dir);
 		read_environment_file(&env, &envsize, buf,
-		    options.permit_user_env_whitelist);
+		    options.permit_user_env_allowlist);
 	}
 
 #ifdef USE_PAM
@@ -1142,15 +1142,15 @@ do_setup_env(struct ssh *ssh, Session *s, const char *shell)
 		 * Don't allow PAM-internal env vars to leak
 		 * back into the session environment.
 		 */
-#define PAM_ENV_BLACKLIST  "SSH_AUTH_INFO*,SSH_CONNECTION*"
+#define PAM_ENV_DENYLIST  "SSH_AUTH_INFO*,SSH_CONNECTION*"
 		p = fetch_pam_child_environment();
-		copy_environment_blacklist(p, &env, &envsize,
-		    PAM_ENV_BLACKLIST);
+		copy_environment_denylist(p, &env, &envsize,
+		    PAM_ENV_DENYLIST);
 		free_pam_environment(p);
 
 		p = fetch_pam_environment();
-		copy_environment_blacklist(p, &env, &envsize,
-		    PAM_ENV_BLACKLIST);
+		copy_environment_denylist(p, &env, &envsize,
+		    PAM_ENV_DENYLIST);
 		free_pam_environment(p);
 	}
 #endif /* USE_PAM */
@@ -1732,7 +1732,7 @@ session_unused(int id)
 	sessions[id].chanid = -1;
 	sessions[id].ptyfd = -1;
 	sessions[id].ttyfd = -1;
-	sessions[id].ptymaster = -1;
+	sessions[id].ptyprimary = -1;
 	sessions[id].x11_chanids = NULL;
 	sessions[id].next_unused = sessions_first_unused;
 	sessions_first_unused = id;
@@ -2066,7 +2066,7 @@ session_break_req(struct ssh *ssh, Session *s)
 	    (r = sshpkt_get_end(ssh)) != 0)
 		sshpkt_fatal(ssh, r, "%s: parse packet", __func__);
 
-	if (s->ptymaster == -1 || tcsendbreak(s->ptymaster, 0) == -1)
+	if (s->ptyprimary == -1 || tcsendbreak(s->ptyprimary, 0) == -1)
 		return 0;
 	return 1;
 }
@@ -2290,9 +2290,9 @@ session_pty_cleanup2(Session *s)
 	 * the pty cleanup, so that another process doesn't get this pty
 	 * while we're still cleaning up.
 	 */
-	if (s->ptymaster != -1 && close(s->ptymaster) == -1)
-		error("close(s->ptymaster/%d): %s",
-		    s->ptymaster, strerror(errno));
+	if (s->ptyprimary != -1 && close(s->ptyprimary) == -1)
+		error("close(s->ptyprimary/%d): %s",
+		    s->ptyprimary, strerror(errno));
 
 	/* unlink pty from session */
 	s->ttyfd = -1;

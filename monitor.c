@@ -1568,11 +1568,11 @@ mm_answer_pty(struct ssh *ssh, int sock, struct sshbuf *m)
 	if (fd0 != 0)
 		error("%s: fd0 %d != 0", __func__, fd0);
 
-	/* slave is not needed */
+	/* replica is not needed */
 	close(s->ttyfd);
 	s->ttyfd = s->ptyfd;
 	/* no need to dup() because nobody closes ptyfd */
-	s->ptymaster = s->ptyfd;
+	s->ptyprimary = s->ptyfd;
 
 	debug3("%s: tty %s ptyfd %d", __func__, s->tty, s->ttyfd);
 

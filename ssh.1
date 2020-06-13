@@ -272,7 +272,7 @@ blocks and exit.
 .It Fl g
 Allows remote hosts to connect to local forwarded ports.
 If used on a multiplexed connection, then this option must be specified
-on the master process.
+on the primary process.
 .Pp
 .It Fl I Ar pkcs11
 Specify the PKCS#11 shared library
@@ -397,20 +397,20 @@ This also may be specified on a per-host basis in the configuration file.
 Places the
 .Nm
 client into
-.Dq master
+.Dq primary
 mode for connection sharing.
 Multiple
 .Fl M
 options places
 .Nm
 into
-.Dq master
+.Dq primary
 mode but with confirmation required using
 .Xr ssh-askpass 1
 before each operation that changes the multiplexing state
 (e.g. opening a new session).
 Refer to the description of
-.Cm ControlMaster
+.Cm ControlPrimary
 in
 .Xr ssh_config 5
 for details.
@@ -448,23 +448,23 @@ needs to ask for a password or passphrase; see also the
 option.)
 .Pp
 .It Fl O Ar ctl_cmd
-Control an active connection multiplexing master process.
+Control an active connection multiplexing primary process.
 When the
 .Fl O
 option is specified, the
 .Ar ctl_cmd
-argument is interpreted and passed to the master process.
+argument is interpreted and passed to the primary process.
 Valid commands are:
 .Dq check
-(check that the master process is running),
+(check that the primary process is running),
 .Dq forward
 (request forwardings without command execution),
 .Dq cancel
 (cancel forwardings),
 .Dq exit
-(request the master to exit), and
+(request the primary to exit), and
 .Dq stop
-(request the master to stop accepting further multiplexing requests).
+(request the primary to stop accepting further multiplexing requests).
 .Pp
 .It Fl o Ar option
 Can be used to give options in the format used in the configuration file.
@@ -492,7 +492,7 @@ For full details of the options listed below, and their possible values, see
 .It Compression
 .It ConnectionAttempts
 .It ConnectTimeout
-.It ControlMaster
+.It ControlPrimary
 .It ControlPath
 .It ControlPersist
 .It DynamicForward
@@ -691,7 +691,7 @@ to disable connection sharing.
 Refer to the description of
 .Cm ControlPath
 and
-.Cm ControlMaster
+.Cm ControlPrimary
 in
 .Xr ssh_config 5
 for details.

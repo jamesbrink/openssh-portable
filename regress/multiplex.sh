@@ -14,29 +14,29 @@ fi
 
 P=3301  # test port
 
-wait_for_mux_master_ready()
+wait_for_mux_primary_ready()
 {
 	for i in 1 2 3 4 5 6 7 8 9; do
 		${SSH} -F $OBJ/ssh_config -S $CTL -Ocheck otherhost \
 		    >/dev/null 2>&1 && return 0
 		sleep $i
 	done
-	fatal "mux master never becomes ready"
+	fatal "mux primary never becomes ready"
 }
 
 start_sshd
 
-start_mux_master()
+start_mux_primary()
 {
-	trace "start master, fork to background"
-	${SSH} -Nn2 -MS$CTL -F $OBJ/ssh_config -oSendEnv="_XXX_TEST" somehost \
+	trace "start primary, fork to background"
+	${SSH} -Nn2 -PS$CTL -F $OBJ/ssh_config -oSendEnv="_XXX_TEST" somehost \
 	    -E $TEST_REGRESS_LOGFILE 2>&1 &
 	# NB. $SSH_PID will be killed by test-exec.sh:cleanup on fatal errors.
 	SSH_PID=$!
-	wait_for_mux_master_ready
+	wait_for_mux_primary_ready
 }
 
-start_mux_master
+start_mux_primary
 
 verbose "test $tid: envpass"
 trace "env passing over multiplexed connection"
@@ -171,14 +171,14 @@ verbose "test $tid: cmd exit"
 ${SSH} -F $OBJ/ssh_config -S $CTL -Oexit otherhost >>$TEST_REGRESS_LOGFILE 2>&1 \
     || fail "send exit command failed" 
 
-# Wait for master to exit
+# Wait for primary to exit
 wait $SSH_PID
 kill -0 $SSH_PID >/dev/null 2>&1 && fail "exit command failed"
 
-# Restart master and test -O stop command with master using -N
+# Restart primary and test -O stop command with primary using -N
 verbose "test $tid: cmd stop"
-trace "restart master, fork to background"
-start_mux_master
+trace "restart primary, fork to background"
+start_mux_primary
 
 # start a long-running command then immediately request a stop
 ${SSH} -F $OBJ/ssh_config -S $CTL otherhost "sleep 10; exit 0" \
@@ -187,11 +187,11 @@ SLEEP_PID=$!
 ${SSH} -F $OBJ/ssh_config -S $CTL -Ostop otherhost >>$TEST_REGRESS_LOGFILE 2>&1 \
     || fail "send stop command failed"
 
-# wait until both long-running command and master have exited.
+# wait until both long-running command and primary have exited.
 wait $SLEEP_PID
 [ $! != 0 ] || fail "waiting for concurrent command"
 wait $SSH_PID
-[ $! != 0 ] || fail "waiting for master stop"
+[ $! != 0 ] || fail "waiting for primary stop"
 kill -0 $SSH_PID >/dev/null 2>&1 && fatal "stop command failed"
 SSH_PID="" # Already gone, so don't kill in cleanup
 

@@ -53,7 +53,7 @@ ro_test() {
 
 perm_test() {
 	_op=$1
-	_whitelist_ops=$2
+	_allowlist_ops=$2
 	_cmd="$3"
 	_prep="$4"
 	_expect_success_post="$5"
@@ -63,22 +63,22 @@ perm_test() {
 	prepare_files "$_prep"
 	prepare_server
 	run_client "$_cmd" || fail "plain $_op failed"
-	postcondition "$_op no white/blacklists" "$_expect_success_post"
-	# Whitelist
+	postcondition "$_op no white/denylists" "$_expect_success_post"
+	# Allowlist
 	prepare_files "$_prep"
-	prepare_server -p $_op,$_whitelist_ops
-	run_client "$_cmd" || fail "whitelisted $_op failed"
-	postcondition "$_op whitelisted" "$_expect_success_post"
-	# Blacklist
+	prepare_server -p $_op,$_allowlist_ops
+	run_client "$_cmd" || fail "allowlisted $_op failed"
+	postcondition "$_op allowlisted" "$_expect_success_post"
+	# Denylist
 	prepare_files "$_prep"
 	prepare_server -P $_op
-	run_client "$_cmd" && fail "blacklisted $_op succeeded"
-	postcondition "$_op blacklisted" "$_expect_fail_post"
+	run_client "$_cmd" && fail "denylisted $_op succeeded"
+	postcondition "$_op denylisted" "$_expect_fail_post"
 	# Whitelist with op missing.
 	prepare_files "$_prep"
-	prepare_server -p $_whitelist_ops
-	run_client "$_cmd" && fail "no whitelist $_op succeeded"
-	postcondition "$_op not in whitelist" "$_expect_fail_post"
+	prepare_server -p $_allowlist_ops
+	run_client "$_cmd" && fail "no allowlist $_op succeeded"
+	postcondition "$_op not in allowlist" "$_expect_fail_post"
 }
 
 ro_test \

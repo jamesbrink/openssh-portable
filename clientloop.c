@@ -149,7 +149,7 @@ extern char *forward_agent_sock_path;
 static volatile sig_atomic_t received_window_change_signal = 0;
 static volatile sig_atomic_t received_signal = 0;
 
-/* Time when backgrounded control master using ControlPersist should exit */
+/* Time when backgrounded control primary using ControlPersist should exit */
 static time_t control_persist_exit_time = 0;
 
 /* Common data for the client loop code. */
@@ -218,9 +218,9 @@ signal_handler(int sig)
 
 /*
  * Sets control_persist_exit_time to the absolute time when the
- * backgrounded control master should exit due to expiry of the
+ * backgrounded control primary should exit due to expiry of the
  * ControlPersist timeout.  Sets it to 0 if we are not a backgrounded
- * control master process, or if there is no ControlPersist timeout.
+ * control primary process, or if there is no ControlPersist timeout.
  */
 static void
 set_control_persist_exit_time(struct ssh *ssh)
@@ -877,7 +877,7 @@ out:
 /* reasons to suppress output of an escape command in help output */
 #define SUPPRESS_NEVER		0	/* never suppress, always show */
 #define SUPPRESS_MUXCLIENT	1	/* don't show in mux client sessions */
-#define SUPPRESS_MUXMASTER	2	/* don't show in mux master sessions */
+#define SUPPRESS_MUXPRIMARY	2	/* don't show in mux primary sessions */
 #define SUPPRESS_SYSLOG		4	/* don't show when logging to syslog */
 struct escape_help_text {
 	const char *cmd;
@@ -885,7 +885,7 @@ struct escape_help_text {
 	unsigned int flags;
 };
 static struct escape_help_text esc_txt[] = {
-    {".",  "terminate session", SUPPRESS_MUXMASTER},
+    {".",  "terminate session", SUPPRESS_MUXPRIMARY},
     {".",  "terminate connection (and any multiplexed sessions)",
 	SUPPRESS_MUXCLIENT},
     {"B",  "send a BREAK to the remote system", SUPPRESS_NEVER},
@@ -912,7 +912,7 @@ print_escape_help(struct sshbuf *b, int escape_char, int mux_client,
 
 	suppress_flags =
 	    (mux_client ? SUPPRESS_MUXCLIENT : 0) |
-	    (mux_client ? 0 : SUPPRESS_MUXMASTER) |
+	    (mux_client ? 0 : SUPPRESS_MUXPRIMARY) |
 	    (using_stderr ? 0 : SUPPRESS_SYSLOG);
 
 	for (i = 0; i < sizeof(esc_txt)/sizeof(esc_txt[0]); i++) {
@@ -1236,7 +1236,7 @@ client_loop(struct ssh *ssh, int have_pty, int escape_char_arg,
 
 	debug("Entering interactive session.");
 
-	if (options.control_master &&
+	if (options.control_primary &&
 	    !option_clear_or_none(options.control_path)) {
 		debug("pledge: id");
 		if (pledge("stdio rpath wpath cpath unix inet dns recvfd sendfd proc exec id tty",
@@ -1382,7 +1382,7 @@ client_loop(struct ssh *ssh, int have_pty, int escape_char_arg,
 		}
 
 		/*
-		 * If we are a backgrounded control master, and the
+		 * If we are a backgrounded control primary, and the
 		 * timeout has expired without any active client
 		 * connections, then quit.
 		 */

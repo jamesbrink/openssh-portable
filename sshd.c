@@ -325,7 +325,7 @@ sighup_restart(void)
 }
 
 /*
- * Generic signal handler for terminating signals in the master daemon.
+ * Generic signal handler for terminating signals in the primary daemon.
  */
 /*ARGSUSED*/
 static void
@@ -949,7 +949,7 @@ send_rexec_state(int fd, struct sshbuf *conf)
 	}
 
 	/*
-	 * Protocol from reexec master to child:
+	 * Protocol from reexec primary to child:
 	 *	string	configuration
 	 *	string	included_files[] {
 	 *		string	selector
